@@ -1,0 +1,75 @@
+Here’s an enhanced and more descriptive version of your WordPress plugin development guide:
+
+---
+
+## **WordPress Plugin Development Guide**
+
+### **Main Files Overview**
+
+- **./admin/class-demo-plugin-admin.php**:  
+  This file contains the class that manages all the administrative actions and filters. Any functionality or features intended for the WordPress admin dashboard, such as settings pages or admin-specific logic, should be implemented here. This is where actions and filters that pertain to the backend will be registered and executed.
+
+- **./public/class-demo-plugin-public.php**:  
+  This file holds the class responsible for the public-facing side of your WordPress site. It defines actions and filters that will be visible or usable by site visitors. Features like front-end form handling, public content manipulation, or other user-facing interactions are handled here.
+
+### **Development Notes**
+
+WordPress plugin development is centered around a robust system of hooks, which allow developers to modify or extend the core functionality of WordPress without altering the core files. There are two primary types of hooks you’ll work with: **Actions** and **Filters**.
+
+#### **Hooks Overview**
+
+- **Filters**:  
+  Filters allow you to modify data before it is displayed or processed. They act as intermediaries between data input and output, giving developers the opportunity to tweak content, options, or variables. Filters are designed to be isolated, meaning they should only affect the specific data they are processing. They must return the modified data back to WordPress. For example, you could use a filter to modify the title of a post before it is displayed or adjust a plugin’s settings before they are saved.
+
+  **Key Points about Filters**:
+  - Used to modify or transform data.
+  - Should not produce side effects (i.e., they shouldn’t change global variables, output content, etc.).
+  - Must return the modified value to ensure proper execution.
+  - Example usage:  
+    ```php
+    add_filter( 'the_title', 'modify_post_title' );
+    function modify_post_title( $title ) {
+        return 'Prefix - ' . $title;
+    }
+    ```
+
+- **Actions**:  
+  Actions are designed to perform a task at a specific point in the execution process. They do not expect any data to be returned. Instead, they are used when you want to trigger custom functionality in response to specific events, such as when a post is published, a user logs in, or content is displayed on the front end. Unlike filters, actions do not modify data—they simply execute code when the event they are hooked into occurs.
+
+  **Key Points about Actions**:
+  - Used to trigger custom functionality.
+  - Do not return data.
+  - Typically used for logging, sending notifications, or executing additional code at a certain point in the WordPress lifecycle.
+  - Example usage:  
+    ```php
+    add_action( 'wp_footer', 'add_custom_footer' );
+    function add_custom_footer() {
+        echo '<p>Custom Footer Text</p>';
+    }
+    ```
+
+#### **Adding Hooks by Context (Admin vs Public)**
+
+Depending on where you want your hook to execute—either in the **admin area** or on the **public-facing side**—you’ll need to register your actions and filters in the appropriate file.
+
+- **For Admin-Side Hooks**:  
+  Any hooks specific to WordPress admin functionality should be added in `./admin/class-demo-plugin-admin.php`. This includes things like custom settings pages, modifying the admin interface, or handling backend form submissions. Example:
+  ```php
+  add_action( 'admin_menu', 'register_custom_admin_menu' );
+  function register_custom_admin_menu() {
+      add_menu_page( 'Custom Menu Title', 'Custom Menu', 'manage_options', 'custom-menu-slug', 'custom_menu_page_callback' );
+  }
+  ```
+
+- **For Public-Side Hooks**:  
+  For actions or filters that will be executed on the front end of the website, add them in `./public/class-demo-plugin-public.php`. This includes anything that affects the user experience, such as altering post content, displaying custom data, or interacting with forms visible to visitors. Example:
+  ```php
+  add_filter( 'the_content', 'add_custom_content' );
+  function add_custom_content( $content ) {
+      return $content . '<p>Additional content for the post.</p>';
+  }
+  ```
+
+---
+
+By following this structure and leveraging the power of hooks (actions and filters), you can effectively extend the functionality of your plugin without altering WordPress core files, ensuring compatibility and maintainability.
