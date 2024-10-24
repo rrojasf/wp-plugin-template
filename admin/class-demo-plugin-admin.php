@@ -22,82 +22,89 @@
  */
 class Demo_Plugin_Admin {
 
-	/**
-	 * The ID of this plugin.
-	 *
-	 * @since    1.0.0
-	 * @access   private
-	 * @var      string    $plugin_name    The ID of this plugin.
-	 */
+	// Private properties
 	private $plugin_name;
-
-	/**
-	 * The version of this plugin.
-	 *
-	 * @since    1.0.0
-	 * @access   private
-	 * @var      string    $version    The current version of this plugin.
-	 */
 	private $version;
 
-	/**
-	 * Initialize the class and set its properties.
-	 *
-	 * @since    1.0.0
-	 * @param      string    $plugin_name       The name of this plugin.
-	 * @param      string    $version    The version of this plugin.
-	 */
+	// Constructor method
 	public function __construct( $plugin_name, $version ) {
-
 		$this->plugin_name = $plugin_name;
 		$this->version = $version;
 
+		// Register hook for spell check
+		add_action('pre_save_post', array($this, 'check_post_spelling'));
 	}
 
-	/**
-	 * Register the stylesheets for the admin area.
-	 *
-	 * @since    1.0.0
-	 */
+	// Method to enqueue styles
 	public function enqueue_styles() {
-
-		/**
-		 * This function is provided for demonstration purposes only.
-		 *
-		 * An instance of this class should be passed to the run() function
-		 * defined in Demo_Plugin_Loader as all of the hooks are defined
-		 * in that particular class.
-		 *
-		 * The Demo_Plugin_Loader will then create the relationship
-		 * between the defined hooks and the functions defined in this
-		 * class.
-		 */
-
 		wp_enqueue_style( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'css/demo-plugin-admin.css', array(), $this->version, 'all' );
-
 	}
 
-	/**
-	 * Register the JavaScript for the admin area.
-	 *
-	 * @since    1.0.0
-	 */
+	// Method to enqueue scripts
 	public function enqueue_scripts() {
-
-		/**
-		 * This function is provided for demonstration purposes only.
-		 *
-		 * An instance of this class should be passed to the run() function
-		 * defined in Demo_Plugin_Loader as all of the hooks are defined
-		 * in that particular class.
-		 *
-		 * The Demo_Plugin_Loader will then create the relationship
-		 * between the defined hooks and the functions defined in this
-		 * class.
-		 */
-
 		wp_enqueue_script( $this->plugin_name, plugin_dir_url( __FILE__ ) . 'js/demo-plugin-admin.js', array( 'jquery' ), $this->version, false );
-
 	}
 
+	// Method to check and correct spelling errors in posts
+	public function check_post_spelling($post_id) {
+		$post = get_post($post_id);
+
+		// Check if post is published
+		if ('publish' !== $post->post_status) {
+			return;
+		}
+
+		$content = $post->post_content;
+		$corrected_content = $this->get_corrected_content($content);
+
+		// If corrections are made, update the post content
+		if ($corrected_content !== $content) {
+			remove_action('pre_save_post', array($this, 'check_post_spelling'));
+			wp_update_post(array(
+				'ID' => $post_id,
+				'post_content' => $corrected_content,
+			));
+			add_action('pre_save_post', array($this, 'check_post_spelling'));
+
+			// Add admin notice for correction
+			add_action('admin_notices', function() {
+				echo '<div class="notice notice-success is-dismissible"><p>Post content has been spell-checked and corrected.</p></div>';
+			});
+		}
+	}
+
+	// Method to handle OpenAI API interaction
+	private function get_corrected_content($content) {
+		// Check if cached response exists
+		$cache_key = 'spellcheck_' . md5($content);
+		$cached_content = get_transient($cache_key);
+
+		if ($cached_content) {
+			return $cached_content;
+		}
+
+		// Prepare the API request
+		$api_key = 'your-api-key-here'; // This should be securely stored
+		$response = wp_remote_post('https://api.openai.com/v1/spellcheck', array(
+			'headers' => array(
+				'Content-Type' => 'application/json',
+				'Authorization' => 'Bearer ' . $api_key,
+			),
+			'body' => json_encode(array('text' => $content))
+		));
+
+		// Error handling
+		if (is_wp_error($response)) {
+			error_log('Error accessing OpenAI API: ' . $response->get_error_message());
+			return $content;
+		}
+
+		$body = json_decode($response['body']);
+		$corrected_content = $body->corrected_text ?? $content;
+
+		// Cache corrected content
+		set_transient($cache_key, $corrected_content, HOUR_IN_SECONDS);
+
+		return $corrected_content;
+	}
 }
